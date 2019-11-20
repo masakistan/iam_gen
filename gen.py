@@ -14,6 +14,7 @@ lines_gt = sys.argv[4]
 
 out_dir = sys.argv[5]
 n_samples = int(sys.argv[6])
+n_blank_lines = int(sys.argv[7])
 
 try:
     makedirs(out_dir)
@@ -33,6 +34,9 @@ def parse_iam_gt(fpath, img_dir, load_images=False):
             img_path = join(img_dir, img_path[0], '-'.join(img_path[:2]), '-'.join(img_path) + '.png')
             if load_images:
                 img = cv2.imread(img_path)
+                if img is None:
+                    continue
+                assert img is not None, "img {} is none".format(img_path)
             else:
                 img = None
             data[lid] = (img, gt)
@@ -45,6 +49,7 @@ lines_data = parse_iam_gt(lines_gt, lines_dir)
 print("Done parsing lines, found {} entries".format(len(lines_data)))
 
 
+dims = []
 gts = []
 for i in tqdm(range(n_samples)):
     rand_line_key = random.choice(list(lines_data))
@@ -83,9 +88,20 @@ for i in tqdm(range(n_samples)):
 
     out_path = join(out_dir, str(i) + '.png')
     cv2.imwrite(out_path, new_img, [cv2.IMWRITE_PNG_COMPRESSION, 9])
+    dims.append(new_img.shape)
 
     gts.append((out_path, ' '.join(word_gts)))
 
+offset = len(gts)
+for i in range(n_blank_lines):
+    i += offset
+    dim = random.choice(dims)
+    new_img = np.ones(dim) * 255
+    out_path = join(out_dir, str(i) + '.png')
+    cv2.imwrite(out_path, new_img, [cv2.IMWRITE_PNG_COMPRESSION, 9])
+    gts.append((out_path, ''))
+    
+    
 with open(join(out_dir, 'generated_labels.txt'), 'w') as fh:
     for gt in gts:
         line = "\t".join(gt)
@@ -94,3 +110,4 @@ with open(join(out_dir, 'generated_labels.txt'), 'w') as fh:
         fh.write("\n")
     
     
+   
